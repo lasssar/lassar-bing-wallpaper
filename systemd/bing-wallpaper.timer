@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Bing Today Wallpaper regularly
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target
