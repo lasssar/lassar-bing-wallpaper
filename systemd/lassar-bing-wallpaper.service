@@ -1,1 +1,8 @@
+[Unit]
+Description=Bing Today Wallpaper
+After=network.target
 
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/YOURUSER/bing-wallpaper/lassar-bing-wallpaper.py
+Environment=DISPLAY=:0
