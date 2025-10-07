@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write    # <-- EZ KELL a release létrehozáshoz és feltöltéshez
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -12,16 +15,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Verzió szám generálása (például push számláló alapján)
+      # 2. Verzió szám generálása (futás száma alapján)
       - name: Generate version
         id: vars
         run: |
-          # Automatikus verzió, push-szám alapján
-          VERSION="v1.$GITHUB_RUN_NUMBER"
+          VERSION="v1.${GITHUB_RUN_NUMBER}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Generated version: $VERSION"
 
-      # 3. Csomagoláshoz szükséges eszközök telepítése
+      # 3. Csomagoló eszközök telepítése
       - name: Install packaging tools
         run: sudo apt update && sudo apt install -y dpkg-dev debhelper
 
@@ -43,7 +45,7 @@ jobs:
           dpkg-deb --build build/lassar-bing-wallpaper
           mv build/lassar-bing-wallpaper.deb lassar-bing-wallpaper.deb
 
-      # 6. Release létrehozása vagy lekérése
+      # 6. Release létrehozása (ha nem létezik)
       - name: Create GitHub release
         id: release
         uses: ncipollo/release-action@v1
@@ -53,8 +55,10 @@ jobs:
           body: "Automatikus build a lassar-bing-wallpaper csomaghoz."
           draft: false
           prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 7. .deb feltöltése a release Assets közé
+      # 7. .deb feltöltése a release-hez
       - name: Upload .deb to release
         uses: actions/upload-release-asset@v1
         with:
@@ -62,3 +66,5 @@ jobs:
           asset_path: ./lassar-bing-wallpaper.deb
           asset_name: lassar-bing-wallpaper.deb
           asset_content_type: application/vnd.debian.binary-package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
