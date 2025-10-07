@@ -1,0 +1,4 @@
+#!/bin/bash
+chmod +x /usr/local/bin/lassar-bing-wallpaper.sh
+echo "Installed lassar-bing-wallpaper ✅"
+exit 0
