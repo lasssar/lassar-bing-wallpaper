@@ -1,0 +1,10 @@
+Package: lassar-bing-wallpaper
+Version: 1.0.0
+Section: misc
+Priority: optional
+Architecture: all
+Depends: bash, curl, coreutils, findutils, wget
+Maintainer: Lassar Kardival <lass@disroot.org>
+Description: Automatically download and set Bing wallpapers
+ A simple cross-desktop Bash utility that fetches the daily Bing wallpaper,
+ sets it as your background, and cleans up older wallpapers after a week.
