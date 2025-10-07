@@ -1,4 +1,4 @@
-name: Build Debian package
+name: Build and Release Debian package
 
 on:
   push:
@@ -33,8 +33,11 @@ jobs:
           dpkg-deb --build build/lassar-bing-wallpaper
           mv build/lassar-bing-wallpaper.deb lassar-bing-wallpaper.deb
 
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload .deb to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
         with:
-          name: lassar-bing-wallpaper.deb
-          path: lassar-bing-wallpaper.deb
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./lassar-bing-wallpaper.deb
+          asset_name: lassar-bing-wallpaper.deb
+          asset_content_type: application/vnd.debian.binary-package
