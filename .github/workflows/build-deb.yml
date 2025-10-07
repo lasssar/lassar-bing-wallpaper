@@ -1,0 +1,32 @@
+name: Build Debian package
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install packaging tools
+        run: sudo apt update && sudo apt install -y dpkg-dev debhelper
+
+      - name: Prepare structure
+        run: |
+          mkdir -p lassar-bing-wallpaper/usr/local/bin
+          cp lassar-bing-wallpaper.sh lassar-bing-wallpaper/usr/local/bin/
+
+      - name: Build .deb package
+        run: |
+          dpkg-deb --build lassar-bing-wallpaper
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lassar-bing-wallpaper.deb
+          path: lassar-bing-wallpaper.deb
