@@ -1,22 +1,31 @@
-name: Build and Release Debian package
+name: Build and Release Debian Package
 
 on:
   push:
     branches: [ main ]
-  release:
-    types: [created]
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
-
     steps:
+      # 1. Kód lekérése
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Verzió szám generálása (például push számláló alapján)
+      - name: Generate version
+        id: vars
+        run: |
+          # Automatikus verzió, push-szám alapján
+          VERSION="v1.$GITHUB_RUN_NUMBER"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Generated version: $VERSION"
+
+      # 3. Csomagoláshoz szükséges eszközök telepítése
       - name: Install packaging tools
         run: sudo apt update && sudo apt install -y dpkg-dev debhelper
 
+      # 4. DEBIAN struktúra előkészítése
       - name: Prepare DEBIAN structure
         run: |
           mkdir -p build/lassar-bing-wallpaper/DEBIAN
@@ -28,16 +37,28 @@ jobs:
           chmod 755 build/lassar-bing-wallpaper/DEBIAN/postinst
           chmod 755 build/lassar-bing-wallpaper/DEBIAN/postrm
 
+      # 5. .deb csomag buildelése
       - name: Build .deb package
         run: |
           dpkg-deb --build build/lassar-bing-wallpaper
           mv build/lassar-bing-wallpaper.deb lassar-bing-wallpaper.deb
 
+      # 6. Release létrehozása vagy lekérése
+      - name: Create GitHub release
+        id: release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.VERSION }}
+          name: "Debian Package ${{ env.VERSION }}"
+          body: "Automatikus build a lassar-bing-wallpaper csomaghoz."
+          draft: false
+          prerelease: true
+
+      # 7. .deb feltöltése a release Assets közé
       - name: Upload .deb to release
-        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ steps.release.outputs.upload_url }}
           asset_path: ./lassar-bing-wallpaper.deb
           asset_name: lassar-bing-wallpaper.deb
           asset_content_type: application/vnd.debian.binary-package
