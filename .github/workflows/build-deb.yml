@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,14 +17,21 @@ jobs:
       - name: Install packaging tools
         run: sudo apt update && sudo apt install -y dpkg-dev debhelper
 
-      - name: Prepare structure
+      - name: Prepare DEBIAN structure
         run: |
-          mkdir -p lassar-bing-wallpaper/usr/local/bin
-          cp lassar-bing-wallpaper.sh lassar-bing-wallpaper/usr/local/bin/
+          mkdir -p build/lassar-bing-wallpaper/DEBIAN
+          mkdir -p build/lassar-bing-wallpaper/usr/local/bin
+          cp debian/control build/lassar-bing-wallpaper/DEBIAN/control
+          cp debian/postinst build/lassar-bing-wallpaper/DEBIAN/postinst
+          cp debian/postrm build/lassar-bing-wallpaper/DEBIAN/postrm
+          cp lassar-bing-wallpaper.sh build/lassar-bing-wallpaper/usr/local/bin/
+          chmod 755 build/lassar-bing-wallpaper/DEBIAN/postinst
+          chmod 755 build/lassar-bing-wallpaper/DEBIAN/postrm
 
       - name: Build .deb package
         run: |
-          dpkg-deb --build lassar-bing-wallpaper
+          dpkg-deb --build build/lassar-bing-wallpaper
+          mv build/lassar-bing-wallpaper.deb lassar-bing-wallpaper.deb
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
