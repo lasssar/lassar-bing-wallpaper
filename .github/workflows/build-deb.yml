@@ -1,70 +1,82 @@
-name: Build and Release Debian Package
+name: Build and Release Lassar Bing Wallpaper
 
 on:
   push:
-    branches: [ main ]
-
-permissions:
-  contents: write    # <-- EZ KELL a release létrehozáshoz és feltöltéshez
+    tags:
+      - 'v*'  # minden v-vel kezdődő tagre automatikusan fut
+  workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build_and_release:
+    name: Build .deb and Create Release
     runs-on: ubuntu-latest
+
     steps:
-      # 1. Kód lekérése
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Verzió szám generálása (futás száma alapján)
-      - name: Generate version
-        id: vars
+      - name: Set up environment
         run: |
-          VERSION="v1.${GITHUB_RUN_NUMBER}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Generated version: $VERSION"
+          sudo apt update
+          sudo apt install -y dpkg-dev fakeroot
 
-      # 3. Csomagoló eszközök telepítése
-      - name: Install packaging tools
-        run: sudo apt update && sudo apt install -y dpkg-dev debhelper
-
-      # 4. DEBIAN struktúra előkészítése
-      - name: Prepare DEBIAN structure
+      - name: Prepare DEBIAN control file
         run: |
-          mkdir -p build/lassar-bing-wallpaper/DEBIAN
-          mkdir -p build/lassar-bing-wallpaper/usr/local/bin
-          cp debian/control build/lassar-bing-wallpaper/DEBIAN/control
-          cp debian/postinst build/lassar-bing-wallpaper/DEBIAN/postinst
-          cp debian/postrm build/lassar-bing-wallpaper/DEBIAN/postrm
-          cp lassar-bing-wallpaper.sh build/lassar-bing-wallpaper/usr/local/bin/
-          chmod 755 build/lassar-bing-wallpaper/DEBIAN/postinst
-          chmod 755 build/lassar-bing-wallpaper/DEBIAN/postrm
+          mkdir -p lassar-bing-wallpaper/DEBIAN
+          cat <<EOF > lassar-bing-wallpaper/DEBIAN/control
+          Package: lassar-bing-wallpaper
+          Version: ${GITHUB_REF_NAME#v}
+          Section: utils
+          Priority: optional
+          Architecture: all
+          Depends: curl, feh
+          Maintainer: Laszlo Kardos <info@kardos-gebaeudereinigung.de>
+          Description: Lassar Daily Bing Wallpaper for Openbox
+           Automatically updates your Openbox wallpaper with Bing's daily image.
+          EOF
 
-      # 5. .deb csomag buildelése
       - name: Build .deb package
         run: |
-          dpkg-deb --build build/lassar-bing-wallpaper
-          mv build/lassar-bing-wallpaper.deb lassar-bing-wallpaper.deb
+          dpkg-deb --build lassar-bing-wallpaper
+          ls -lh lassar-bing-wallpaper.deb
 
-      # 6. Release létrehozása (ha nem létezik)
-      - name: Create GitHub release
-        id: release
-        uses: ncipollo/release-action@v1
+      - name: Generate changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
         with:
-          tag: ${{ env.VERSION }}
-          name: "Debian Package ${{ env.VERSION }}"
-          body: "Automatikus build a lassar-bing-wallpaper csomaghoz."
-          draft: false
-          prerelease: true
+          configuration: ".github/changelog-config.json"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 7. .deb feltöltése a release-hez
-      - name: Upload .deb to release
-        uses: actions/upload-release-asset@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ steps.release.outputs.upload_url }}
-          asset_path: ./lassar-bing-wallpaper.deb
-          asset_name: lassar-bing-wallpaper.deb
-          asset_content_type: application/vnd.debian.binary-package
+          name: "Lassar Bing Wallpaper ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          body: |
+            🌅 **Lassar Daily Bing Wallpaper for Openbox**
+            
+            Version: ${{ github.ref_name }}
+            Built automatically with GitHub Actions.
+            
+            🧩 **Features**
+            - Automatically downloads and sets Bing's wallpaper
+            - Works perfectly with Openbox
+            - Manual run support
+            
+            📦 **Installation**
+            ```bash
+            sudo dpkg -i lassar-bing-wallpaper.deb
+            ```
+            
+            ${{
+              steps.changelog.outputs.changelog
+            }}
+          files: |
+            lassar-bing-wallpaper.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup build artifacts
+        if: always()
+        run: rm -rf lassar-bing-wallpaper.deb
