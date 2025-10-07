@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Removed lassar-bing-wallpaper ❌"
+exit 0
