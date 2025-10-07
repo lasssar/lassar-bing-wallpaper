@@ -1,63 +1,44 @@
 #!/bin/bash
-# Updated 2025 version — Bing daily wallpaper setter
-# Author: Laszlo Kardos (updated by ChatGPT)
+# lassar-bing-wallpaper.sh
+# Universal Bing daily wallpaper fetcher for Linux
+# Author: Lassar Kardival
+# License: MIT
+# Year: 2025
 
-# Base URL and API
-bing="https://www.bing.com"
-api="/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US"
+BING_URL="https://www.bing.com"
+DAY=$(shuf -i 0-7 -n 1)
+API="$BING_URL/HPImageArchive.aspx?format=js&idx=$DAY&n=1&mkt=en-US"
 
-# Random day selector (0–7)
-if [[ $1 =~ ^[0-7]$ ]]; then
-  day="$1"
-else
-  day=$(shuf -i 0-7 -n 1)
+PICTURES_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/BingWallpapers"
+mkdir -p "$PICTURES_DIR"
+
+API_RESPONSE=$(curl -A "Mozilla/5.0" -s "$API")
+URLBASE=$(echo "$API_RESPONSE" | grep -oP '(?<="urlbase":")[^"]+')
+
+IMG_URL="$BING_URL${URLBASE}_UHD.jpg"
+if ! curl -A "Mozilla/5.0" -s --head --fail "$IMG_URL" >/dev/null; then
+    IMG_URL="$BING_URL${URLBASE}_1920x1080.jpg"
 fi
 
-# Build full API URL
-req="$bing/HPImageArchive.aspx?format=js&idx=$day&n=1&mkt=en-US"
+IMG_NAME="${IMG_URL##*/}"
+IMG_PATH="$PICTURES_DIR/$IMG_NAME"
+curl -A "Mozilla/5.0" -s -o "$IMG_PATH" "$IMG_URL"
 
-# Target directory
-path="$HOME/Pictures/Backgrounds/Bing/"
-mkdir -p "$path"
+# Delete images older than 7 days
+find "$PICTURES_DIR" -type f -mtime +7 -name "*.jpg" -delete 2>/dev/null
 
-# Fetch JSON safely with user-agent
-apiResp=$(curl -A "Mozilla/5.0" -s "$req")
-if [[ -z "$apiResp" ]]; then
-  echo "❌ Nem sikerült letölteni a Bing API választ."
-  exit 1
-fi
-
-# Extract image URL
-urlbase=$(echo "$apiResp" | grep -oP '(?<="urlbase":")[^"]+')
-if [[ -z "$urlbase" ]]; then
-  echo "❌ Nem található urlbase az API válaszban."
-  exit 1
-fi
-
-# Próbáljunk UHD-t, ha nem elérhető, fallback 1920x1080
-img_url="$bing${urlbase}_UHD.jpg"
-if ! curl -A "Mozilla/5.0" --silent --head --fail "$img_url" > /dev/null; then
-  img_url="$bing${urlbase}_1920x1080.jpg"
-fi
-
-# Extract copyright
-copyright=$(echo "$apiResp" | grep -oP '(?<="copyright":")[^"]+' | sed 's/\\u00a9/©/g')
-
-# Get image filename
-imgName="${img_url##*/}"
-
-# Download image
-echo "⬇️ Letöltés: $img_url"
-curl -A "Mozilla/5.0" -s -o "$path$imgName" "$img_url"
-
-# Save copyright info
-echo "$copyright" > "$path${imgName%.jpg}.txt"
-
-# Set wallpaper with nitrogen
+# Set wallpaper
 if command -v nitrogen >/dev/null 2>&1; then
-  nitrogen --set-auto "$path$imgName"
-else
-  echo "⚠️ Nitrogen nem található, háttér nem lett beállítva."
+    nitrogen --set-auto "$IMG_PATH" --save
+elif command -v feh >/dev/null 2>&1; then
+    feh --bg-fill "$IMG_PATH"
+elif command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.background picture-uri "file://$IMG_PATH"
 fi
 
-echo "✅ Kész: $path$imgName"
+# Notification
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send "Lassar Bing Wallpaper" "New Bing wallpaper applied: $IMG_NAME"
+fi
+
+echo "✅ New Bing wallpaper saved to $IMG_PATH"
